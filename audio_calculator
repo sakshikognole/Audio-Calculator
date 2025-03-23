@@ -1,0 +1,108 @@
+import speech_recognition as sr
+import pyttsx3
+import tkinter as tk
+from tkinter import messagebox
+import re
+
+# Initialize Text-to-Speech Engine
+engine = pyttsx3.init()
+
+
+def speak(text):
+    """Convert text to speech."""
+    engine.say(text)
+    engine.runAndWait()
+
+
+def recognize_speech():
+    """Capture speech and convert to text."""
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        status_label.config(text="🎤 Listening... Speak your math expression.")
+        speak("Listening... Say a math expression.")
+        root.update()
+
+        try:
+            recognizer.adjust_for_ambient_noise(source)
+            audio = recognizer.listen(source, timeout=5)
+            text = recognizer.recognize_google(audio)
+            status_label.config(text="✅ Recognized: " + text)
+            input_var.set(text)  # Set recognized text in input field
+            return text.lower()
+        except sr.UnknownValueError:
+            messagebox.showerror("Error", "Could not understand speech. Please try again.")
+            status_label.config(text="❌ Could not understand. Try again.")
+            return None
+        except sr.RequestError:
+            messagebox.showerror("Error", "Network error. Please check your internet connection.")
+            status_label.config(text="⚠️ Network error.")
+            return None
+
+
+def convert_words_to_math(expression):
+    """Convert spoken words into mathematical operators."""
+    words_to_symbols = {
+        "plus": "+", "minus": "-", "times": "", "multiplied by": "",
+        "into": "*", "divided by": "/", "over": "/", "modulus": "%",
+        "power of": "**"
+    }
+    for word, symbol in words_to_symbols.items():
+        expression = re.sub(rf"\b{word}\b", symbol, expression)
+    return expression
+
+
+def calculate():
+    """Evaluate the mathematical expression."""
+    expression = input_var.get()
+    if not expression:
+        messagebox.showerror("Error", "Please enter or say a math expression.")
+        return
+
+    expression = convert_words_to_math(expression)
+
+    try:
+        result = eval(expression)
+        result_var.set(f"Result: {result}")
+        speak(f"The result is {result}")
+    except Exception:
+        messagebox.showerror("Error", "Invalid expression! Please try again.")
+        result_var.set("❌ Invalid expression")
+
+
+def exit_app():
+    """Exit the application."""
+    speak("Goodbye! Have a great day!")
+    root.quit()
+
+
+# Create Tkinter Window
+root = tk.Tk()
+root.title("Voice Calculator")
+root.geometry("400x400")
+root.resizable(False, False)
+
+# GUI Elements
+tk.Label(root, text="🎤 Voice Calculator", font=("Arial", 16, "bold")).pack(pady=10)
+
+input_var = tk.StringVar()
+entry = tk.Entry(root, textvariable=input_var, font=("Arial", 14), width=25, justify="center")
+entry.pack(pady=5)
+
+calc_button = tk.Button(root, text="Calculate", font=("Arial", 12), command=calculate)
+calc_button.pack(pady=5)
+
+voice_button = tk.Button(root, text="🎙 Speak", font=("Arial", 12), command=recognize_speech)
+voice_button.pack(pady=5)
+
+result_var = tk.StringVar()
+result_label = tk.Label(root, textvariable=result_var, font=("Arial", 14), fg="blue")
+result_label.pack(pady=10)
+
+status_label = tk.Label(root, text="", font=("Arial", 10))
+status_label.pack(pady=5)
+
+exit_button = tk.Button(root, text="Exit", font=("Arial", 12), command=exit_app, bg="red", fg="white")
+exit_button.pack(pady=10)
+
+# Run GUI Loop
+root.mainloop()
